@@ -1,4 +1,3 @@
-// src/server/index.ts
 import express from "express";
 import Redis from "ioredis";
 import cors from "cors";
@@ -9,15 +8,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize Redis client with better error handling
-const redis = new Redis({
-  host: "localhost",
-  port: 6379,
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-});
+// Get Redis URL from environment variable
+const REDIS_URL = process.env.REDIS_URL;
+if (!REDIS_URL) {
+  console.error("REDIS_URL environment variable is not set");
+  process.exit(1);
+}
+
+const redis = new Redis(REDIS_URL);
 
 redis.on("connect", () => {
   console.log("Successfully connected to Redis");
@@ -39,7 +37,6 @@ const rateLimitMiddleware = async (req, res, next) => {
   try {
     // Get the current number of requests for this IP
     const requests = await redis.get(rateKey);
-
     if (requests && parseInt(requests) >= 10) {
       return res.status(429).json({
         error: "Rate limit exceeded",
@@ -55,7 +52,6 @@ const rateLimitMiddleware = async (req, res, next) => {
       // Increment the counter
       await redis.incr(rateKey);
     }
-
     next();
   } catch (error) {
     console.error("Rate limiting error:", error);
@@ -87,7 +83,6 @@ app.post("/api/click", rateLimitMiddleware, async (req, res) => {
   try {
     // Add click to queue instead of directly incrementing
     await redis.rpush(CLICK_QUEUE_KEY, "click");
-
     const totalClicks = (await redis.get(TOTAL_CLICKS_KEY)) || "0";
     res.json({
       success: true,
@@ -104,7 +99,6 @@ app.get("/api/clicks", async (req, res) => {
   try {
     const totalClicks = (await redis.get(TOTAL_CLICKS_KEY)) || "0";
     const queueLength = await redis.llen(CLICK_QUEUE_KEY);
-
     res.json({
       totalClicks: parseInt(totalClicks),
       queuedClicks: queueLength,
@@ -119,11 +113,9 @@ app.get("/api/clicks", async (req, res) => {
 app.get("/api/rate-limit-status", async (req, res) => {
   const ip = req.ip;
   const rateKey = `rate_limit:${ip}`;
-
   try {
     const requests = await redis.get(rateKey);
     const ttl = await redis.ttl(rateKey);
-
     res.json({
       requests: requests ? parseInt(requests) : 0,
       timeRemaining: ttl,
