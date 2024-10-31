@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: click-counter-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: click-counter-redis
+          property: connectionString
+      - key: PORT
+        value: 10000
+
+  - type: redis
+    name: click-counter-redis
+    ipAllowList: [] # only allow internal connections
+    plan: free # or choose a paid plan if needed
