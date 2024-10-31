@@ -9,7 +9,7 @@ const ClickCounter = () => {
 
     const fetchClicks = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/clicks');
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clicks`);
             const data = await response.json();
             setClicks(data.totalClicks);
             setQueuedClicks(data.queuedClicks);
@@ -28,7 +28,7 @@ const ClickCounter = () => {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch('http://localhost:3000/api/click', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/click`, {
                 method: 'POST',
             });
             const data = await response.json();
